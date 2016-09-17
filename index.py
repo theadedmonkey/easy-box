@@ -107,6 +107,7 @@ class Box(object):
 class Box(object):
 
     def __init__(self):
+        self.ctx = None
         self.parent = None
         self.children = []
 
@@ -114,6 +115,7 @@ class Box(object):
         self.y = 'auto'
         self.w = 'auto'
         self.h = 'auto'
+        self.__position = 'relative'
         self.background_color = 'transparent'
         self.padding_top = 0
         self.padding_right = 0
@@ -125,38 +127,53 @@ class Box(object):
         box.parent = self
         self.children.append(box)
 
+        if box.position == 'absolute':
+            self.ctx = EasyBox.box_root
+        if box.position == 'relative':
+            self.ctx = self.parent
+
+    @property
+    def position(self):
+        return self.__position
+
+    @position.setter
+    def position(self, value):
+        self.__position = value
+
+        if value == 'absolute':
+            self.ctx = EasyBox.box_root
+        if value == 'relative':
+            self.ctx = self.parent
+
     def compute_x(self):
-        if self.x == 'auto':
-            return self.parent.compute_content_x()
-        else:
-            return self.parent.compute_content_x() + self.x
+        origin = self.ctx.compute_content_x()
+        return origin if self.x == 'auto' else origin + self.x
+
 
     def compute_content_x(self):
         return self.compute_x() + self.padding_left
 
     def compute_y(self):
-        if self.y == 'auto':
-            return self.parent.compute_content_y()
-        else:
-            return self.parent.compute_content_y() + self.y
+        origin = self.ctx.compute_content_y()
+        return origin if self.y == 'auto' else origin + self.y
 
     def compute_content_y(self):
         return self.compute_y() + self.padding_top
 
     def compute_w(self):
-        return self.parent.compute_content_w() if self.w == 'auto' else self.w
+        return self.ctx.compute_content_w() if self.w == 'auto' else self.w
 
     def compute_content_w(self):
         return self.compute_w() - self.padding_left - self.padding_right
 
     def compute_h(self):
-        return self.parent.compute_content_h() if self.h == 'auto' else self.h
+        return self.ctx.compute_content_h() if self.h == 'auto' else self.h
 
     def compute_content_h(self):
         return self.compute_h() - self.padding_top - self.padding_bottom
 
     def compute_background_color(self):
-        return self.parent.compute_background_color() if self.background_color == 'transparent' else self.background_color
+        return self.ctx.compute_background_color() if self.background_color == 'transparent' else self.background_color
 
 class BoxRenderer(object):
 
@@ -176,10 +193,8 @@ class BoxRenderer(object):
 
 class EasyBox(object):
 
-    def __init__(self, screen):
-       self.box_root = self.create_root(screen)
-
-    def create_root(self, screen):
+    @staticmethod
+    def create_root(screen):
         screen_rect = screen.get_rect()
 
         box = Box()
@@ -193,32 +208,38 @@ class EasyBox(object):
         box.compute_content_y = lambda: screen_rect.y
         box.compute_content_w = lambda: screen_rect.w
         box.compute_content_h = lambda: screen_rect.h
+
+        EasyBox.box_root = box
         return box
 
-    def create_box(self):
+    @staticmethod
+    def create_box():
         box = Box()
-        self.box_root.add(box)
+        EasyBox.box_root.add(box)
         return box
 
 
 if __name__ == '__main__':
 
-    container = EasyBox(screen=windowSurface)
+    root = EasyBox.create_root(screen=windowSurface)
 
-    box1 = container.create_box()
+    box1 = EasyBox.create_box()
     box1.x = 10
     box1.y = 20
     box1.w = 800
     box1.h = 600
     box1.padding_left = 20
     box1.padding_right = 20
+    box1.padding_top = 20
+    box1.padding_bottom = 20
     box1.background_color = (150, 000, 000)
 
-    box2 = container.create_box()
+    box2 = EasyBox.create_box()
     box2.x = 50
     box2.y = 10
     box2.w = 400
     box2.h = 300
+    box2.position = 'absolute'
     box2.background_color = (000, 150, 000)
 
     box1.add(box2)
